@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'core.login',
     'core.users',
     'core.report',
-    'core.page',
+
 
 
 
