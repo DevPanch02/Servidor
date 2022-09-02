@@ -11,6 +11,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from core.users.models import User
 from api.User.serializer_user import UserSerializer,UserTokenSerializerJWT,CustomUserSerializer
 
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
 
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -28,6 +33,42 @@ class UserViewSet(viewsets.GenericViewSet):
             user_serializer = self.serializer_class(user,many=True)
             return Response(user_serializer.data, status = status.HTTP_200_OK)
         return Response({"message":"No hay ninguna usuario"}, status = status.HTTP_400_BAD_REQUEST)
+
+    
+    def create(self,request):
+        users_serializer = UserSerializer(data=request.data)
+        if users_serializer.is_valid():
+            users_serializer.save()
+            id_cli = User.objects.get(id = users_serializer.data['id'])
+            self.send_email(id_cli.id)
+            return Response({'message':'Usuario creado correctamente'}, status = status.HTTP_201_CREATED)
+        return Response( users_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def send_email(self, id):
+        user = User.objects.get(pk=id)
+        to=user.email
+        fromemail='muisne2022@outlook.es'
+        subject='Términos y Condiciones'
+        message = MIMEMultipart('alternative')
+        message['subject'] = subject
+        parameters = {
+                'user': user,
+                    #'mainpage': Mainpage.objects.first(),
+                # 'link_home': 'http://{}'.format(url),
+                    #'link_login': 'http://{}/login'.format(url),
+        }
+        html = render_to_string('correo.html', parameters)
+        content = MIMEText(html, 'html')
+        message.attach(content)
+
+        mailserver = smtplib.SMTP('smtp.office365.com',587)
+        mailserver.ehlo()
+        mailserver.starttls()
+        mailserver.ehlo()  #again
+        mailserver.login('muisne2022@outlook.es', 'Muisne.2022')
+        mailserver.sendmail(fromemail, to, message.as_string())
+        mailserver.quit()
+
 
 
 class Login(TokenObtainPairView):
